@@ -55,61 +55,40 @@ C = textscan( str,'%s%f%f%f%f%f%f%f%f%f%f%f%f%f%f','headerlines',0,'delimiter','
 data3 = cell2mat(C(2:size(C,2)));
 data3 = data3*1E3;
 
-% 6_1a
-
-% p0 = 450.608E3;
-% pn1 = 449.802E3;
-% pn2 = 446.313E3;
-% pn1 = 449.415E3;
-% pn2 = 445.949E3;
-% T0 = 293.15;
-% 
-% M1 = CalcMach(pn1, p0, gamma);
-% T1 = CalcTemp(T0, M1, gamma);
-% a1 = sqrt(gamma * R * T1);
-% u1 = M1*a1;
-% rho1 = pn1/(R*T1);
-% m_dot1 = rho1 * u1 * A1;
+%%%%%% 6_1a
 
 T0 = 293.15;
 for i = 1:size(data1, 2)
-    M2 = CalcMach(data1(3, i), data1(1, i), gamma);
-    T2 = CalcTemp(T0, M2, gamma);
-    a2 = sqrt(gamma * R * T2);
-    u2 = M2*a2;
-    rho2 = data1(3, i)/(R*T2);
-    m_dot2(i) = rho2 * u2 * A2;
+    % First assume n1 being at stagnation conditions (stagnation chamber)
+    p01 = data1(1, i);
+    p2 = data1(3, i);
+    T1 = T0;
+    for j = 1:20       
+        M2 = CalcMach(p2, p01, gamma);
+        T2 = CalcTemp(T0, M2, gamma);
+        a2 = sqrt(gamma * R * T2);
+        u2 = M2*a2;
+        rho2 = data1(3, i)/(R*T2);
+        m_dot(i, j) = rho2 * u2 * A2;
+
+        M1 = M2 * (A2/A1) * (data1(3, i)/data1(2, i)) * sqrt(T1/T2);
+
+        % Now correct for flow not being stagnant at n1
+
+        T1 = CalcTemp(T0, M1, gamma);
+        p01 = CalcStagnationPressure(M1, data1(2, i), gamma);
+    end
+        
 end
 
-% m_dot2 = rho2 * u2 * A2;
 figure(611)
-plot(data1(12,:)/1E3,m_dot2, 'Color', 'b', 'Linewidth', 1.5)
+plot(data1(12,:)/1E3,m_dot(:,end), 'Color', 'b', 'Linewidth', 1.5)
 grid on
 xl = xlabel('Back pressure $p_B$ in kPa');
 yl = ylabel(['Mass flow rate ' '$\dot{m}$ in kg/s']);
 set([xl, yl],'Interpreter','latex');
 
-% while abs(m_dot1 - m_dot2) > tol    
-%     
-%     
-%     u1 = m_dot2/(rho1*A1);
-%     M1 = u1/a1;
-%     T1 = CalcTemp(T0, M1, gamma);
-%     a1 = sqrt(gamma * R * T1);
-%     u1 = M1*a1;
-%     rho1 = pn1 /(R*T1);
-%     m_dot1 = rho1 * u1 * A1;
-%     
-%     u2 = m_dot1/(rho2*A2);
-%     M2 = u2/a2;
-%     T2 = CalcTemp(T0, M2, gamma);
-%     a2 = sqrt(gamma * R * T2);
-%     u2 = M2*a2;
-%     rho2 = pn2 /(R*T2);
-%     m_dot2 = rho2 * u2 * A2;
-% end
-
-% 6_1b
+%%%%%% 6_1b
 
 figure(612)    
 hold on
@@ -126,7 +105,7 @@ xl = xlabel('Downstream distance  $x$ from inltet in m');
 yl = ylabel(['Normalized static pressure $\overline{p}$']);
 set([xl, yl, lgnd],'Interpreter','latex');
 
-% 6_2a
+%%%%%% 6_2a
 figure(621)
 hold on
 scatter(x, data2(4:11)/data2(1),'x', 'b', 'Linewidth', 1.5, 'DisplayName', 'Experiment')
@@ -140,7 +119,7 @@ yl = ylabel(['Normalized static pressure $\overline{p}$']);
 set([xl, yl, lgnd],'Interpreter','latex');
 
 
-% 6_2b
+%%%%%% 6_2b
 for i = 4:11
     M_62b(i-3) = BisectionAlgorithm_62(data2(i), pstar, gamma, M_init(1), M_init(2), tol);
 end
@@ -156,7 +135,7 @@ xl = xlabel('Downstream distance  $x$ from inlet in m');
 yl = ylabel(['Mach number $M$']);
 set([xl, yl, lgnd],'Interpreter','latex');
 
-% 6_3c
+%%%%%% 6_3c
 for i = 1:size(data3,2)-1
     M_63c_isentropic(i) = CalcMach(pstar, data3(end,i), gamma);
     M_63c_rayleigh(i) = BisectionAlgorithm_63(data3(end,i), pstar, gamma, M_init(1), M_init(2), tol);    
