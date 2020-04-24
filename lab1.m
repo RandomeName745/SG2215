@@ -3,8 +3,10 @@
 C_f = 0.005;                % friction coefficient
 D = 0.0064;                 % inner pipe diameter
 L = 2.67;                   % pipe length
-A1 = 19.5E-3;               % pipe diameter at inlet of Venturi section
-A2 = 10E-3;                 % pipe diameter at outlet of Venturi section
+D1 = 19.5E-3;               % pipe diameter at inlet of Venturi section
+D2 = 10E-3;                 % pipe diameter at outlet of Venturi section
+A1 = pi*(D1/2)^2;
+A2 = pi*(D2/2)^2;
 
 % Define fluid properties
 
@@ -60,7 +62,7 @@ data3 = data3*1E3;
 T0 = 293.15;
 for i = 1:size(data1, 2)
     % First assume n1 being at stagnation conditions (stagnation chamber)
-    p01 = data1(1, i);
+    p01 = data1(2, i);
     p2 = data1(3, i);
     T1 = T0;
     for j = 1:20       
@@ -86,7 +88,9 @@ plot(data1(12,:)/1E3,m_dot(:,end), 'Color', 'b', 'Linewidth', 1.5)
 grid on
 xl = xlabel('Back pressure $p_B$ in kPa');
 yl = ylabel(['Mass flow rate ' '$\dot{m}$ in kg/s']);
+ylim([0 0.016])
 set([xl, yl],'Interpreter','latex');
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
 
 %%%%%% 6_1b
 
@@ -104,12 +108,13 @@ ylim([0, 1])
 xl = xlabel('Downstream distance  $x$ from inltet in m');
 yl = ylabel(['Normalized static pressure $\overline{p}$']);
 set([xl, yl, lgnd],'Interpreter','latex');
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
 
 %%%%%% 6_2a
 figure(621)
 hold on
-scatter(x, data2(4:11)/data2(1),'x', 'b', 'Linewidth', 1.5, 'DisplayName', 'Experiment')
-scatter(x, p/p0(1),'x', 'r', 'Linewidth', 1.5, 'DisplayName', 'Calculation')
+scatter(x, data2(4:11)/data2(4),'x', 'b', 'Linewidth', 1.5, 'DisplayName', 'Experiment')
+scatter(x, p/p(1),'x', 'r', 'Linewidth', 1.5, 'DisplayName', 'Calculation')
 grid on
 lgnd = legend('-DynamicLegend');
 xlim([0, 2.67])
@@ -117,6 +122,7 @@ ylim([0, 1])
 xl = xlabel('Downstream distance  $x$ from inlet in m');
 yl = ylabel(['Normalized static pressure $\overline{p}$']);
 set([xl, yl, lgnd],'Interpreter','latex');
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
 
 
 %%%%%% 6_2b
@@ -134,11 +140,14 @@ ylim([0, 1])
 xl = xlabel('Downstream distance  $x$ from inlet in m');
 yl = ylabel(['Mach number $M$']);
 set([xl, yl, lgnd],'Interpreter','latex');
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
 
 %%%%%% 6_3c
 for i = 1:size(data3,2)-1
     M_63c_isentropic(i) = CalcMach(pstar, data3(end,i), gamma);
     M_63c_rayleigh(i) = BisectionAlgorithm_63(data3(end,i), pstar, gamma, M_init(1), M_init(2), tol);    
+%     M_63c_isentropic(i) = CalcMach1NormalShock(CalcMach(pstar, data3(end,i), gamma), gamma);
+%     M_63c_rayleigh(i) = CalcMach1NormalShock(BisectionAlgorithm_63(data3(end,i), pstar, gamma, M_init(1), M_init(2), tol), gamma);    
 end
 figure(633)
 hold on
@@ -151,6 +160,7 @@ ylim([1.05, 1.25])
 xl = xlabel('Radial position  $r$ at tube outlet in mm');
 yl = ylabel(['Mach number $M$']);
 set([xl, yl, lgnd],'Interpreter','latex');
+set(findall(gcf,'-property','FontSize'),'FontSize',14)
 
 
 %% Define functions
@@ -269,4 +279,8 @@ function p = CalcStaticPressure(M, p0, gamma)
         p:     static pressure
     %}
     p = p0 / (1 + (gamma - 1)/2 * M^2)^(gamma/(gamma-1));
+end
+
+function M1 = CalcMach1NormalShock(M2, gamma)
+    M1 = sqrt( (1 + 0.5 * M2^2 * (gamma - 1)) / (gamma *M2^2 - 0.5 * (gamma - 1)) );
 end
