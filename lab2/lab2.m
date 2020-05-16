@@ -45,6 +45,11 @@ M_2_exp = CalcM2(M_s_exp, gamma1);
 disp(['Experiment1: Mach number behind shock (for M_s_exp = ' num2str(M_s_exp) ') : ' num2str(M_2_exp)]);
 disp(['Experiment1: Relative difference to target M2 : ' num2str(abs((1-M_2_exp/M2)*100)) ' % ']);
 
+% 2c
+% Observation referring to the obtained M2 value:
+% No bow shock or oblique shock is formed at the wedge as M2<1
+% Reflection of incident shockwave from wall can be observed when
+% travelling back.
 
 %% 5.2
 M2 = 1.04;
@@ -78,11 +83,23 @@ M_2_exp = CalcM2(M_s_exp, gamma1);
 disp(['Experiment2: Mach number behind shock (for M_s_exp = ' num2str(M_s_exp) ') : ' num2str(M_2_exp)]);
 disp(['Experiment2: Relative difference to target M2 : ' num2str(abs((1-M_2_exp/M2)*100)) ' % ']);
 
+% 2c
+% Observation referring to calculated M2 and theta-beta-M-curve
+% M2 > 1 but theta > theta_max, thus bow shock which is detached from the wedge is formed behind
+% the incident shock wave at the wedge
+% Influence of theta angle can be seen as bow is formed accordingly (larger
+% angle in upper region)
+% theta > theta_max, thus solution can not be seen in theta-beta-M curve 
+% (oblique shock only for theta <= theta_max)
 
 %% 5.3
 M2 = 1.34;
 p1 = 10*10^3;   %[Pa]
 p2 = 100*10^3;   %[Pa]
+
+% from snapshot
+d_thetabeta_u = 59.3;  %[deg]
+d_thetabeta_l = 50.9;  %[deg]
 
 % Setup calculation of Mach number Ms of shock with bisection algorithm
 % Depends on required Mach number M2 behind shock
@@ -112,6 +129,30 @@ M_2_exp = CalcM2(M_s_exp, gamma1);
 disp(['Experiment3: Mach number behind shock (for M_s_exp = ' num2str(M_s_exp) ') : ' num2str(M_2_exp)]);
 disp(['Experiment3: Relative difference to target M2 : ' num2str(abs((1-M_2_exp/M2)*100)) ' % ']);
 
+% 2c
+theta_u = 8*pi/180; %[rad]
+beta_u = d_thetabeta_u*pi/180  + theta_u;  %[rad]
+theta_l = 4*pi/180; %[rad]
+beta_l = d_thetabeta_l*pi/180 + theta_l;  %[rad]
+
+M_2_u = BisectionAlgorithm_M_2(theta_u, beta_u, M_init(1), M_init(2), gamma1, tol);
+M_2_l = BisectionAlgorithm_M_2(theta_l, beta_l, M_init(1), M_init(2), gamma1, tol);
+disp(['Experiment3: Upper Mach number behind shock (for beta_u = ' num2str(beta_u*180/pi) '° and theta_u = ' num2str(theta_u*180/pi) '°) : ' num2str(M_2_u)]);
+disp(['Experiment3: Lower Mach number behind shock (for beta_l = ' num2str(beta_l*180/pi) '° and theta_u = ' num2str(theta_l*180/pi) '°) : ' num2str(M_2_l)]);
+
+% 2d
+% Observation referring to calculated M2 and theta-beta-M-curve
+% M2 > 1 but theta < theta_max, thus oblique shocks formated at the wedge tip 
+% when the incident shock wave hits the wedge
+% Influence of theta angle can be seen as bow is formed accordingly (larger beta for larger theta
+% in upper part)
+% theta < theta_max, thus solution can be seen in theta-beta-M curve: below
+% M2=1 curve -> weak shock
+
+% 2e
+% Which is the most reliable value?
+% Not the one from 2c because of inaccuracy when measuring beta
+
 
 %% Define functions
 
@@ -139,6 +180,20 @@ function a = CalcSpeedOfSound(gamma, R, T)
     a = sqrt(gamma*R*T);
 end
 
+% theta-beta-M relation
+function M_2 = BisectionAlgorithm_M_2(theta, beta, M_low, M_up, gamma, tol)
+    M_mid = (M_low + M_up) / 2;                 % initial Mach number
+    while abs(tan(theta) - CalcTanTheta(M_mid, beta, gamma)) > tol 
+        M_mid = (M_up + M_low) / 2;
+        if CalcTanTheta(M_mid, beta, gamma) > tan(theta) % if RHS is smaller than LHS: Mach number is too high
+            M_up = M_mid;
+        else
+            M_low = M_mid;                      % if RHS is greater than LHS: Mach number is too low
+        end
+    end
+    M_2 = M_mid;
+end
+
 
 function p4_p1 = Calcp4_p1(gamma1, gamma4, M_s, a1, a4)
     p4_p1 = (2*gamma1*M_s^2 - (gamma1 - 1)) / (gamma1 + 1) * (1 - (gamma4 - 1) / (gamma1 + 1) * a1/a4 * (M_s - 1/M_s))^(-2*gamma4 / (gamma4 - 1));
@@ -146,8 +201,13 @@ end
 function p4_p1_calib = Calcp4_p1_calib(M_s)
     p4_p1_calib = exp(0.31*M_s^3 - 2.6*M_s^2 + 8.1*M_s - 5.5);
 end
+
 function M2 = CalcM2(M_s, gamma)
     M2 = (2*(M_s^2 - 1)) / ((2*gamma*M_s^2 - (gamma - 1))^(1/2) *((gamma - 1)*M_s^2 + 2)^(1/2));
+end
+
+function tan_theta = CalcTanTheta(M, beta, gamma)
+    tan_theta = 2*cot(beta)*((M^2*sin(beta)^2-1)/(M^2*(gamma+cos(2*beta))+2));
 end
 
 function M = BisectionAlgorithm_62(p, pstar, gamma, M_low, M_up, tol)
