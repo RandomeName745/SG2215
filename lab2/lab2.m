@@ -12,69 +12,107 @@ T4 = 300;
 
 tol = 1E-6;                 % tolerance for bisection algorithm
 
+
 %% 5.1
 M2 = 0.46;
+p1 = 49*10^3;   %[Pa]
+p2 = 96*10^3;   %[Pa]
 
 % Setup calculation of Mach number Ms of shock with bisection algorithm
 % Depends on required Mach number M2 behind shock
 M_init = [0, 2];            % initial lower and upper limit of Mach number: M_init = [M_low, M_up];
 
-% a
+% 1a
 M_s = BisectionAlgorithm_M_s(M2, M_init(1), M_init(2), gamma1, tol);
 disp(['Experiment1: Mach number of shock wave (for M2 = ' num2str(M2) ') : ' num2str(M_s)]);
 
-% b
+% 1b
 a1 = CalcSpeedOfSound(gamma1, R1, T1);
 a4 = CalcSpeedOfSound(gamma4, R4, T4);
 p4_p1_th = Calcp4_p1(gamma1, gamma4, M_s, a1, a4);
 disp(['Experiment1: theoretically required pressure ratio p4/p1: ' num2str(p4_p1_th)]);
 
-% c
+% 1c
 p4_p1_calib = Calcp4_p1_calib(M_s);
 disp(['Experiment1: actual required pressure ratio p4/p1: ' num2str(p4_p1_calib)]);
+
+% 2a
+M_s_exp = CalcMs_p2_p1(gamma1,p1,p2);
+disp(['Experiment1: Mach number of shock wave (for p2/p1 = ' num2str(p2/p1) ') : ' num2str(M_s_exp)]);
+
+% 2b
+M_2_exp = CalcM2(M_s_exp, gamma1);
+disp(['Experiment1: Mach number behind shock (for M_s_exp = ' num2str(M_s_exp) ') : ' num2str(M_2_exp)]);
+disp(['Experiment1: Relative difference to target M2 : ' num2str(abs((1-M_2_exp/M2)*100)) ' % ']);
 
 
 %% 5.2
 M2 = 1.04;
+p1 = 10*10^3;   %[Pa]
+p2 = 52*10^3;   %[Pa]
 
 % Setup calculation of Mach number Ms of shock with bisection algorithm
 % Depends on required Mach number M2 behind shock
 M_init = [0, 3];            % initial lower and upper limit of Mach number: M_init = [M_low, M_up];
 
-% a
+% 1a
 M_s = BisectionAlgorithm_M_s(M2, M_init(1), M_init(2), gamma1, tol);
 disp(['Experiment2: Mach number of shock wave (for M2 = ' num2str(M2) ') : ' num2str(M_s)]);
 
-% b
+% 1b
 a1 = CalcSpeedOfSound(gamma1, R1, T1);
 a4 = CalcSpeedOfSound(gamma4, R4, T4);
 p4_p1_th = Calcp4_p1(gamma1, gamma4, M_s, a1, a4);
 disp(['Experiment2: theoretically required pressure ratio p4/p1: ' num2str(p4_p1_th)]);
 
-% c
+% 1c
 p4_p1_calib = Calcp4_p1_calib(M_s);
 disp(['Experiment2: actual required pressure ratio p4/p1: ' num2str(p4_p1_calib)]);
 
+% 2a
+M_s_exp = CalcMs_p2_p1(gamma1,p1,p2);
+disp(['Experiment2: Mach number of shock wave (for p2/p1 = ' num2str(p2/p1) ') : ' num2str(M_s_exp)]);
+
+% 2b
+M_2_exp = CalcM2(M_s_exp, gamma1);
+disp(['Experiment2: Mach number behind shock (for M_s_exp = ' num2str(M_s_exp) ') : ' num2str(M_2_exp)]);
+disp(['Experiment2: Relative difference to target M2 : ' num2str(abs((1-M_2_exp/M2)*100)) ' % ']);
+
+
 %% 5.3
 M2 = 1.34;
+p1 = 10*10^3;   %[Pa]
+p2 = 100*10^3;   %[Pa]
 
 % Setup calculation of Mach number Ms of shock with bisection algorithm
 % Depends on required Mach number M2 behind shock
 M_init = [0, 4];            % initial lower and upper limit of Mach number: M_init = [M_low, M_up];
 
-% a
+% 1a
 M_s = BisectionAlgorithm_M_s(M2, M_init(1), M_init(2), gamma1, tol);
 disp(['Experiment3: Mach number of shock wave (for M2 = ' num2str(M2) ') : ' num2str(M_s)]);
 
-% b
+% 1b
 a1 = CalcSpeedOfSound(gamma1, R1, T1);
 a4 = CalcSpeedOfSound(gamma4, R4, T4);
 p4_p1_th = Calcp4_p1(gamma1, gamma4, M_s, a1, a4);
 disp(['Experiment3: theoretically required pressure ratio p4/p1: ' num2str(p4_p1_th)]);
 
-% c
+% 1c
 p4_p1_calib = Calcp4_p1_calib(M_s);
 disp(['Experiment3: actual required pressure ratio p4/p1: ' num2str(p4_p1_calib)]);
+
+
+% 2a
+M_s_exp = CalcMs_p2_p1(gamma1,p1,p2);
+disp(['Experiment3: Mach number of shock wave (for p2/p1 = ' num2str(p2/p1) ') : ' num2str(M_s_exp)]);
+
+% 2b
+M_2_exp = CalcM2(M_s_exp, gamma1);
+disp(['Experiment3: Mach number behind shock (for M_s_exp = ' num2str(M_s_exp) ') : ' num2str(M_2_exp)]);
+disp(['Experiment3: Relative difference to target M2 : ' num2str(abs((1-M_2_exp/M2)*100)) ' % ']);
+
+
 %% Define functions
 
 % Shock Mach number
@@ -89,6 +127,11 @@ function M_s = BisectionAlgorithm_M_s(M2, M_low, M_up, gamma, tol)
         end
     end
     M_s = M_mid;
+end
+
+function M_s = CalcMs_p2_p1(gamma1,p1,p2)
+
+    M_s = sqrt((gamma1+1)/(2*gamma1)*(p2/p1-1)+1);
 end
 
 % Speed of sound
