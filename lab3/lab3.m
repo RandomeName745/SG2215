@@ -1,60 +1,149 @@
-% Constants
+clc; clear all; close all;
+
+%% Constants
 Minf = 2;
-pinf = 1*10^5;
-AOA = 1.5;              % angle of attack
+AOA = 1.5*pi/180;              % angle of attack
 gamma = 1.4;
 
-%%
+%% Wing properties
+r = 210;    %[-] radius for wing curvature
+c = 70;     %[-] chord of the wing
 
-% Wing properties
-r = 210;                % radius for wing curvature
-lu_deg = 360/(2*pi*r);  % degree (°) per length unit (l.u.)
+x = [7 17 27 37 47 57 67];
+phi = asin((c/2 - x)/r);  %[rad] inclination of the wing at each pressure tap
 
-x = linspace(37,-37);   % x-positions of the wing in l.u. (x(1) = wing tip, x(end) = trailing edge)
-phi = x.*lu_deg;        % x-positions of the wing transformed into
+%only measurement values for lower surface
+theta_p15 = phi + AOA;
+theta_m15 = phi - AOA;
 
-theta_u = phi - AOA;
-theta_l = phi + AOA;
-
-%%
-
-% pinf = CalcStaticPressure(Minf,  p0, gamma);
-
-cp_u = (2*theta_u) ./ (sqrt(Minf^2 - 1));
-cp_l = (2*theta_l) ./ (sqrt(Minf^2 - 1));
-
-LocalPressure(cp_u, gamma, Minf, pinf)
-
-beta_init = [0, pi/2];
-tol = 1E-6;
-
-% Calculate shock angle for oblique shock at leading edge
-beta_u = BisectionAlgorithm_ThetaBetaM(theta_u(1), Minf, beta_init(1), beta_init(2), gamma, tol);
-beta_l = BisectionAlgorithm_ThetaBetaM(theta_l(1), Minf, beta_init(1), beta_init(2), gamma, tol);
-% Calculate normal Mach number
-Mn1_u = Minf*beta_u;
-Mn1_l = Minf*beta_l;
-% Calculate pressure ratio across oblqiue shock from normal shock relation
-pratio_u =  CalcPressureRatioNormalShock(Mn1_u,gamma);
-pratio_l =  CalcPressureRatioNormalShock(Mn1_l,gamma);
-% Calculate normal Mach number behind oblique shock
-Mn2_u = (1 + (gamma - 1)/2 * Mn1_u^2) / (gamma*Mn1_u^2 - (gamma - 1)/2);
-Mn2_l = (1 + (gamma - 1)/2 * Mn1_l^2) / (gamma*Mn1_l^2 - (gamma - 1)/2);
-% Calculate Mach number behind oblique shock
-M2_u = Mn2_u / sin(beta_u - theta_u(1));
-M2_l = Mn2_l / sin(beta_l - theta_l(1));
-% 
-nu2_u = zeros(size(x));
-nu2_l = zeros(size(x));
-nu2_u(1) = CalculatePrandtlMayerAngle(M2_u, gamma);
-nu2_l(1) = CalculatePrandtlMayerAngle(M2_l, gamma);
+phi0 = asin((c/2)/r);  %[rad] inclination of the wing at each pressure tap
+theta0_p15 = phi0 + AOA;
+theta0_m15 = phi0 - AOA;
 
 
 
+%% experimental data
+ptaps_sens = [22.22	22.311	22.27	22.304	22.234	22.464	22.518	22.63]; %[kPa/V] sensitivity
+ptaps_offset = [0.202	0.202	0.204	0.204	0.199	0.197	0.203	0.202]; %[V] offset
 
-function p = LocalPressure(cp, gamma, Minf, pinf)
-    p = 0.5*(gamma*Minf^2*pinf*cp) + pinf;
+ptaps_p15 = [48.129	41.635	35.315	30.077	25.953	22.554	19.322	41.244];    %[V] measured voltage
+ptaps_m15 = [40.988	34.778	29.776	25.167	21.542	18.447	18.406	49.229]; %[V] measured voltage
+
+p0_volt_p15 = 1.546;    %[V]
+p0_volt_m15 = 1.556;    %[V]
+K1 = 79.6737;   %[kPa/V] calibration constant
+K0 = 0.0202;    %[kPa] colibratuib constant
+
+%stagnation pressure 
+patm = 101.2;   %[kPa] atmospheric pressure
+p0_p15 = K1*p0_volt_p15 + K0 + patm;
+p0_m15 = K1*p0_volt_m15 + K0 + patm;
+
+%infinity pressure
+pinf_p15 = p0_p15/((1+(gamma-1)/2*Minf^2)^(gamma/(gamma-1)));
+pinf_m15 = p0_m15/((1+(gamma-1)/2*Minf^2)^(gamma/(gamma-1)));
+
+%cp
+cp_p15 = 2/(gamma*Minf^2)*(ptaps_p15./pinf_p15-1);
+cp_m15 = 2/(gamma*Minf^2)*(ptaps_m15./pinf_m15-1);
+
+
+%% linearized theory in comparison
+cp_p15_lin = 2*theta_p15/(sqrt(Minf^2-1));
+cp_m15_lin = 2*theta_m15/(sqrt(Minf^2-1));
+
+%% exact shock wave theory (theta-beta-M-rel for oblique shock and Prandtl-Meyer for expansion)
+
+for jj = 1:2
+    
+    if jj == 1
+        theta = theta_p15;
+        theta0 = theta0_p15;
+%         pinf = pinf_p15;
+    else
+        theta = theta_m15;
+        theta0 = theta0_m15;
+%         pinf = pinf_m15;
+    end
+    
+    beta_init = [0, pi/2];
+    M_init = [0, 5];
+    tol = 1e-6;
+
+    
+    % Calculate shock angle for oblique shock at leading edge
+    beta0 = BisectionAlgorithm_ThetaBetaM(theta0, Minf, beta_init(1), beta_init(2), gamma, tol);
+    % Calculate normal Mach number
+    Mn1 = Minf*sin(beta0);
+    % Calculate pressure ratio across oblqiue shock from normal shock relation
+%     p2 =  CalcPressureNormalShock(Mn1,pinf,gamma);
+    p2_pinf = 1+(2*gamma)/(gamma+1)*(Mn1^2-1);
+    % Calculate normal Mach number behind oblique shock
+    Mn2 = sqrt((1 + (gamma - 1)/2 * Mn1^2) / (gamma*Mn1^2 - (gamma - 1)/2));
+
+    % Calculate Mach number behind oblique shock
+    M2 = Mn2 / sin(beta0 - theta0);
+    
+
+    nu0 = CalculatePrandtlMayerAngle(M2, gamma);
+
+    delta_theta = abs(theta-theta0);   
+    nu = delta_theta + nu0;
+        
+    %loop
+    for i = 1:length(x)
+      
+        %calculate the ach numbers after each pressure tap location from Prandtl-Meyer expansion
+        M(i) = BisectionAlgorithm_PrandtlMeyer(nu(i), M_init(1), M_init(2), gamma, tol)
+        
+        %calculate pressure at each pressure tap location from Prandtl-Meyer from Mach number
+%         p(i) = CalcPressureExpansion(M(i), M2, p2, gamma);
+        pi_p2(i) = 1/(((1+(gamma-1)/2*M(i))/(1+(gamma-1)/2*M2))^(gamma/(gamma-1)));
+    end 
+    
+    if jj == 1
+%         ptaps_p15_sea = p;
+        pi_pinf_p15_sea = p2_pinf.*pi_p2;
+    else
+%         ptaps_m15_sea = p;
+        pi_pinf_m15_sea = p2_pinf.*pi_p2;
+    end
 end
+
+%cp
+% cp_p15_sea = 2/(gamma*Minf^2)*(ptaps_p15_sea/pinf_p15 - 1);
+% cp_m15_sea = 2/(gamma*Minf^2)*(ptaps_m15_sea/pinf_m15-1); 
+
+cp_p15_sea_n = 2/(gamma*Minf^2)*(pi_pinf_p15_sea - 1);
+cp_m15_sea_n = 2/(gamma*Minf^2)*(pi_pinf_m15_sea - 1); 
+
+
+%% plot
+
+figure
+plot([1:0.01:20],CalculatePrandtlMayerAngle([1:0.01:20], gamma))
+title('Prandtl-Meyer function')
+
+figure
+hold on
+plot(x/c,cp_p15(1:end-1),'ok','DisplayName','\alpha = +1.5 deg experiment')
+plot(x/c,cp_p15_lin,'-.k','DisplayName','\alpha = +1.5 deg linearized theory')
+% plot(x/c,cp_p15_sea,'-.k','DisplayName','\alpha = +1.5 deg shock-expansion approx.')
+plot(x/c,cp_p15_sea_n,'-k','DisplayName','\alpha = +1.5 deg shock-expansion theory')
+plot(x/c,cp_m15(1:end-1),'or','DisplayName','\alpha = -1.5 deg experiment')
+plot(x/c,cp_m15_lin,'-.r','DisplayName','\alpha = -1.5 deg linearized theory')
+% plot(x/c,cp_m15_sea,'-.r','DisplayName','\alpha = -1.5 deg shock-expansion approx.')
+plot(x/c,cp_m15_sea_n,'-r','DisplayName','\alpha = -1.5 deg shock-expansion theory')
+title('pressure coefficient profiles')
+xlim([0 1])
+ylabel('cp [-]')
+xlabel('x/c [-]')
+legend('show','Location','northeast')
+grid on
+
+
+
+%% functions
 
 function p = CalcStaticPressure(M, p0, gamma)
 %{
@@ -68,7 +157,7 @@ function p = CalcStaticPressure(M, p0, gamma)
     p = p0 / (1 + (gamma - 1)/2 * M^2)^(gamma/(gamma-1));
 end
 
-function pratio = CalcPressureRatioNormalShock(M, gamma)
+function p = CalcPressureNormalShock(M, pinf, gamma)
 %{
     Args:
         M:      Mach number
@@ -76,7 +165,7 @@ function pratio = CalcPressureRatioNormalShock(M, gamma)
     Returns:
         pratio: static pressure ratio across shock (normal shock rel.)
     %}
-    pratio = 1 + (2*gamma)/(gamma+1) * (M^2-1);
+    p = pinf * (1 + (2*gamma)/(gamma+1) * (M^2-1));
 end
 
 function tan_theta = CalcTanTheta(M, beta, gamma)
@@ -85,19 +174,39 @@ end
 
 % theta-beta-M relation
 function beta = BisectionAlgorithm_ThetaBetaM(theta, M, beta_low, beta_up, gamma, tol)
-    theta = theta*pi/180;
+%    theta = theta*pi/180;
     beta_mid = (beta_low + beta_up) / 2;                 % initial Mach number
     while abs(tan(theta) - CalcTanTheta(M, beta_mid, gamma)) > tol 
-        beta_mid = (beta_up + beta_low) / 2;
+        beta_mid*180/pi;
         if CalcTanTheta(M, beta_mid, gamma) > tan(theta) % if RHS is smaller than LHS: Mach number is too high
             beta_up = beta_mid;
         else
             beta_low = beta_mid;                      % if RHS is greater than LHS: Mach number is too low
         end
+        beta_mid = (beta_up + beta_low) / 2;
     end
     beta = beta_mid;
 end
 
 function nu = CalculatePrandtlMayerAngle(M, gamma)
-    nu = sqrt((gamma + 1) / (gamma - 1)) * atan((gamma + 1)/(gamma - 1) * (M^2 - 1)) - atan(M^2 - 1);
+    nu = sqrt((gamma + 1) / (gamma - 1)) * atan(sqrt((gamma - 1)/(gamma + 1) .* (M.^2 - 1))) - atan(sqrt(M.^2 - 1));
 end
+
+% Prandtl-Meyer function
+function M = BisectionAlgorithm_PrandtlMeyer(nu, M_low, M_up, gamma, tol)
+    M_mid = (M_low + M_up) / 2;                 % initial Mach number
+    while abs(nu - CalculatePrandtlMayerAngle(M_mid, gamma)) > tol 
+        if CalculatePrandtlMayerAngle(M_mid, gamma) > nu % if RHS is smaller than LHS: Mach number is too high
+            M_up = M_mid;
+        else
+            M_low = M_mid;                      % if RHS is greater than LHS: Mach number is too low
+        end
+        M_mid = (M_up + M_low) / 2
+    end
+    M = M_mid;
+end
+
+function p = CalcPressureExpansion(M, M2, p2, gamma)
+    p = p2/(((1 + (gamma-1)/2 * M)/(1 + (gamma-1)/2 * M2))^(gamma/(gamma-1)));
+end
+
