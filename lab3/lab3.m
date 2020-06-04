@@ -12,7 +12,9 @@ c = 70;     %[-] chord of the wing
 x = [7 17 27 37 47 57 67];
 phi = asin((c/2 - x)/r);  %[rad] inclination of the wing at each pressure tap
 
-%only measurement values for lower surface
+% only measurement values for lower surface
+% p: lower surface (plus)
+% m: upper surface(minus)
 theta_p15 = phi + AOA;
 theta_m15 = phi - AOA;
 
@@ -76,7 +78,6 @@ for jj = 1:2
     % Calculate normal Mach number
     Mn1 = Minf*sin(beta0);
     % Calculate pressure ratio across oblqiue shock from normal shock relation
-%     p2 =  CalcPressureNormalShock(Mn1,pinf,gamma);
     p2_pinf = 1+(2*gamma)/(gamma+1)*(Mn1^2-1);
     % Calculate normal Mach number behind oblique shock
     Mn2 = sqrt((1 + (gamma - 1)/2 * Mn1^2) / (gamma*Mn1^2 - (gamma - 1)/2));
@@ -93,12 +94,11 @@ for jj = 1:2
     %loop
     for i = 1:length(x)
       
-        %calculate the ach numbers after each pressure tap location from Prandtl-Meyer expansion
+        %calculate the Mach numbers after each pressure tap location from Prandtl-Meyer expansion
         M(i) = BisectionAlgorithm_PrandtlMeyer(nu(i), M_init(1), M_init(2), gamma, tol)
         
         %calculate pressure at each pressure tap location from Prandtl-Meyer from Mach number
-%         p(i) = CalcPressureExpansion(M(i), M2, p2, gamma);
-        pi_p2(i) = 1/(((1+(gamma-1)/2*M(i))/(1+(gamma-1)/2*M2))^(gamma/(gamma-1)));
+        pi_p2(i) = CalcPressureExpansion(M2, M(i), gamma);
     end 
     
     if jj == 1
@@ -126,14 +126,14 @@ title('Prandtl-Meyer function')
 
 figure
 hold on
-plot(x/c,cp_p15(1:end-1),'ok','DisplayName','\alpha = +1.5 deg experiment')
-plot(x/c,cp_p15_lin,'-.k','DisplayName','\alpha = +1.5 deg linearized theory')
+plot(x/c,cp_p15(1:end-1),'ok','DisplayName','lower surface: experiment')
+plot(x/c,cp_p15_lin,'-.k','DisplayName','lower surface: linearized theory')
 % plot(x/c,cp_p15_sea,'-.k','DisplayName','\alpha = +1.5 deg shock-expansion approx.')
-plot(x/c,cp_p15_sea_n,'-k','DisplayName','\alpha = +1.5 deg shock-expansion theory')
-plot(x/c,cp_m15(1:end-1),'or','DisplayName','\alpha = -1.5 deg experiment')
-plot(x/c,cp_m15_lin,'-.r','DisplayName','\alpha = -1.5 deg linearized theory')
+plot(x/c,cp_p15_sea_n,'-k','DisplayName','lower surface: shock-expansion theory')
+plot(x/c,cp_m15(1:end-1),'or','DisplayName','upper surface: experiment')
+plot(x/c,cp_m15_lin,'-.r','DisplayName','upper surface: linearized theory')
 % plot(x/c,cp_m15_sea,'-.r','DisplayName','\alpha = -1.5 deg shock-expansion approx.')
-plot(x/c,cp_m15_sea_n,'-r','DisplayName','\alpha = -1.5 deg shock-expansion theory')
+plot(x/c,cp_m15_sea_n,'-r','DisplayName','upper surface: shock-expansion theory')
 title('pressure coefficient profiles')
 xlim([0 1])
 ylabel('cp [-]')
@@ -174,7 +174,6 @@ end
 
 % theta-beta-M relation
 function beta = BisectionAlgorithm_ThetaBetaM(theta, M, beta_low, beta_up, gamma, tol)
-%    theta = theta*pi/180;
     beta_mid = (beta_low + beta_up) / 2;                 % initial Mach number
     while abs(tan(theta) - CalcTanTheta(M, beta_mid, gamma)) > tol 
         beta_mid*180/pi;
@@ -206,7 +205,9 @@ function M = BisectionAlgorithm_PrandtlMeyer(nu, M_low, M_up, gamma, tol)
     M = M_mid;
 end
 
-function p = CalcPressureExpansion(M, M2, p2, gamma)
-    p = p2/(((1 + (gamma-1)/2 * M)/(1 + (gamma-1)/2 * M2))^(gamma/(gamma-1)));
+function p2_p1 = CalcPressureExpansion(M1, M2, gamma)
+    % p1, M1: before expansion
+    % p2, M2: after expansion
+    p2_p1 = ((1 + (gamma-1)/2 * M1^2)/(1 + (gamma-1)/2 * M2^2))^(gamma/(gamma-1));
 end
 
